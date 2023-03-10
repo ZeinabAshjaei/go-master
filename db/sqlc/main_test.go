@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"github.com/ZeinabAshjaei/go-master/utils"
 	_ "github.com/lib/pq"
 	"log"
 	"os"
@@ -12,8 +13,12 @@ var testQueries *Queries
 var testDB *sql.DB
 
 func TestMain(m *testing.M) {
-	var err error
-	testDB, err = sql.Open("postgres", "postgresql://root:secret@localhost:5432/simple_bank?sslmode=disable")
+	config, err := utils.LoadConfig("../..")
+	if err != nil {
+		log.Fatal("config cannot be loaded", err)
+	}
+
+	testDB, err = sql.Open(config.DBDriver, config.DBSource)
 
 	if err != nil {
 		log.Fatal("Connection to the DB could not be established")
