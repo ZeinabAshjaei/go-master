@@ -102,6 +102,91 @@ func TestGetAccountAPI(t *testing.T) {
 	}
 }
 
+func TestDeleteAccountAPI(t *testing.T) {
+	account := getRandomAccount()
+	testCases := []struct {
+		name          string
+		accountId     int64
+		buildStub     func(mockStore *mockdb.MockStore)
+		checkResponse func(t *testing.T, recorder *httptest.ResponseRecorder)
+	}{
+		{
+			name:      "OK",
+			accountId: account.ID,
+			buildStub: func(mockStore *mockdb.MockStore) {
+				mockStore.EXPECT().
+					DeleteAccount(gomock.Any(), account.ID).
+					Times(1).
+					Return(nil)
+			},
+			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
+				require.Equal(t, http.StatusOK, recorder.Code)
+			},
+		},
+		{
+			name:      "notFound",
+			accountId: account.ID,
+			buildStub: func(mockStore *mockdb.MockStore) {
+				mockStore.EXPECT().
+					DeleteAccount(gomock.Any(), account.ID).
+					Times(1).
+					Return(sql.ErrNoRows)
+			},
+			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
+				require.Equal(t, http.StatusNotFound, recorder.Code)
+			},
+		},
+		{
+			name:      "internalServerError",
+			accountId: account.ID,
+			buildStub: func(mockStore *mockdb.MockStore) {
+				mockStore.EXPECT().
+					DeleteAccount(gomock.Any(), account.ID).
+					Times(1).
+					Return(sql.ErrConnDone)
+			},
+			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
+				require.Equal(t, http.StatusInternalServerError, recorder.Code)
+			},
+		},
+		{
+			name:      "badRequest",
+			accountId: 0,
+			buildStub: func(mockStore *mockdb.MockStore) {
+				mockStore.EXPECT().
+					DeleteAccount(gomock.Any(), account.ID).
+					Times(0)
+			},
+			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
+				require.Equal(t, http.StatusBadRequest, recorder.Code)
+			},
+		},
+	}
+
+	for i, _ := range testCases {
+		tc := testCases[i]
+
+		t.Run(tc.name, func(t *testing.T) {
+			controller := gomock.NewController(t)
+			defer controller.Finish()
+			mockStore := mockdb.NewMockStore(controller)
+
+			tc.buildStub(mockStore)
+
+			url := fmt.Sprintf("/accounts/%d", tc.accountId)
+			server := NewServer(mockStore)
+			recorder := httptest.NewRecorder()
+
+			request, err := http.NewRequest(http.MethodDelete, url, nil)
+			require.NoError(t, err)
+
+			server.router.ServeHTTP(recorder, request)
+			tc.checkResponse(t, recorder)
+		})
+
+	}
+}
+
 func getRandomAccount() db.Account {
 	return db.Account{
 		ID:       utils.RandomInt(1, 1000),
