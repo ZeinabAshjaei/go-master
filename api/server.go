@@ -3,6 +3,8 @@ package api
 import (
 	db "github.com/ZeinabAshjaei/go-master/db/sqlc"
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
+	"github.com/go-playground/validator/v10"
 )
 
 type Server struct {
@@ -13,6 +15,14 @@ type Server struct {
 func NewServer(store db.Store) *Server {
 	server := &Server{store: store}
 	router := gin.Default()
+
+	// register validator to gin
+	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
+		err := v.RegisterValidation("currency", validateCurrency)
+		if err != nil {
+			return nil
+		}
+	}
 
 	router.POST("/accounts", server.createAccount)
 	router.GET("/accounts/:id", server.getAccount)
