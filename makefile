@@ -24,6 +24,8 @@ test:
 server:
 	go run main.go
 
+migratecreate:
+	migrate create -ext sql -dir db/migration -seq "filename"
 mock:
 	mockgen -package mockdb  -destination db/mock/store.go github.com/ZeinabAshjaei/go-master/db/sqlc Store
 
